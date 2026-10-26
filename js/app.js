@@ -38,6 +38,10 @@ const OPTIONS = {
     { v: 500, t: '前 500' },
     { v: 9999, t: '排名 500 开外 / 双非' },
   ],
+  ugRank: [
+    { v: 100, t: '世界排名前 100（QS100）' },
+    { v: 9999, t: '前 100 开外 / 双非' },
+  ],
   studyLoc: Object.entries(STUDY_LOC).map(([v, t]) => ({ v, t })),
   gradYears: [
     { v: 'na', t: '还在读 / 尚未毕业' },
@@ -105,6 +109,7 @@ function buildForm() {
   };
   fill('degree', OPTIONS.degree);
   fill('uniRank', OPTIONS.uniRank);
+  fill('ugRank', OPTIONS.ugRank);
   fill('studyLoc', OPTIONS.studyLoc);
   fill('gradYears', OPTIONS.gradYears);
   fill('english', OPTIONS.english);
@@ -133,6 +138,7 @@ function buildForm() {
     .map(([k, v]) => chip('exclude', k, v.label, v.hint)).join('');
 
   updateIncomeFields();
+  updateDegreeFields();
 }
 
 /* ── 自绘下拉框 ─────────────────────────────
@@ -304,6 +310,11 @@ function updateIncomeFields() {
   setIncomeField('passiveIncome', hasPassive);
 }
 
+/** 最高学历高于本科时，本科院校可能和最高学历院校不同，需要单独问。 */
+function updateDegreeFields() {
+  setIncomeField('ugRank', +$('#degree').value > DEG.bachelor);
+}
+
 function numberOrNull(el) {
   return el.disabled || el.value === '' ? null : +el.value;
 }
@@ -314,6 +325,8 @@ function readProfile() {
     age: Math.max(15, Math.min(80, parseInt($('#age').value, 10) || 25)),
     degree: +$('#degree').value,
     uniRank: +$('#uniRank').value,
+    // 最高学历就是本科（或更低）时，本科院校即上面填的院校
+    ugRank: $('#ugRank').disabled ? +$('#uniRank').value : +$('#ugRank').value,
     studyLoc: $('#studyLoc').value,
     yearsSinceGrad: grad === 'na' ? null : +grad,
     english: +$('#english').value,
@@ -576,6 +589,7 @@ function syncUrl(p) {
     rg: $$('[data-group="region"]:checked').map((el) => el.value).join('.'),
     ex: $$('[data-group="exclude"]:checked').map((el) => el.value).join('.'),
   });
+  if (!$('#ugRank').disabled) q.set('ug', p.ugRank);
   if (p.incomeType) q.set('it', p.incomeType);
   if (p.remoteAbroad) q.set('ra', p.remoteAbroad);
   if (p.activeIncome != null) q.set('ai', p.activeIncome);
@@ -593,6 +607,8 @@ function loadFromUrl() {
   set('incomeType', 'it'); set('remoteAbroad', 'ra'); set('activeIncome', 'ai');
   set('passiveIncome', 'pi'); set('primaryIncomeCountry', 'ic');
   updateIncomeFields();
+  updateDegreeFields();
+  set('ugRank', 'ug');
   $('#hasOffer').checked = q.get('o') === '1';
   $('#onlyDeveloped').checked = q.get('dev') === '1';
   const check = (group, csv) => {
@@ -627,6 +643,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // 筛选条件变化只需重渲染，不必重跑匹配
   document.addEventListener('change', (e) => {
     if (e.target.id === 'incomeType' || e.target.id === 'remoteAbroad') updateIncomeFields();
+    if (e.target.id === 'degree') updateDegreeFields();
     if (e.target.dataset?.group === 'skill') normalizeSkillSelection(e.target);
     if (!lastBucket) return;
     const g = e.target.dataset?.group;

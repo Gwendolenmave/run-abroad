@@ -125,6 +125,14 @@ function checkPathway(profile, p) {
     });
   }
 
+  // 本科院校档位：部分路径（如香港高才通）只看本科院校，硕博院校不算
+  if (req.ugRank != null && (profile.ugRank ?? profile.uniRank) > req.ugRank) {
+    gaps.push({
+      kind: HARD, field: 'ugRank',
+      text: `要求本科院校为世界排名前 ${req.ugRank}（QS${req.ugRank}），硕博院校不算，你的本科院校档位不满足`,
+    });
+  }
+
   // 毕业年限窗口
   if (req.gradWithin != null) {
     if (profile.yearsSinceGrad == null) {

@@ -201,7 +201,7 @@ const TYPE_LABEL = {
 
 /**
  * req 中所有字段都是「门槛」，留空 = 无此要求。
- *   age:[min,max]  minDeg  uniRank  gradWithin(年)  minEng
+ *   age:[min,max]  minDeg  uniRank  ugRank(本科院校档位)  gradWithin(年)  minEng
  *   workExp(年)  jobOffer(bool)  fundsUSD  skills[](满足其一即可)
  *   income: { mode: remote|passive|either, minMonthlyUSD, foreignSource, shortfallHint? }
  *   studyIn: STUDY_LOC 的 key，表示学位必须在该地取得
@@ -339,16 +339,16 @@ const PATHWAYS = [
     type: 'talent',
     duration: '首次 24–36 个月，有工作可续',
     pr: '连续通常居住 7 年可申永久居民',
-    req: { minDeg: DEG.bachelor, uniRank: 100 },
+    req: { minDeg: DEG.bachelor, ugRank: 100 },
     quota: 'C 类设年度配额，先到先得；A/B 类不设限',
     cost: '签证费约 HK$600，几乎零成本',
     difficulty: 1,
-    notes: '润学性价比之王，不需要 offer、不需要英语考试、不用离开中文环境。三类：A 类看收入（申请前一年年收入 250 万港币以上，获批 36 个月）；B 类是合资格大学学位 + 过去 5 年内有 3 年工作经验（24 个月）；C 类是毕业 5 年内但经验不足 3 年（24 个月，设年度配额、先到先得）。注意「合资格大学名单」不等于单一的 QS100——它是四个世界排名榜单前 100 的合并名单，另外还纳入了若干酒店管理和设计类专门院校，务必到入境处官网核对当年名单。',
+    notes: '润学性价比之王，不需要 offer、不需要英语考试、不用离开中文环境。三类：A 类看收入（申请前一年年收入 250 万港币以上，获批 36 个月）；B 类是 QS 前 100 合资格大学的**本科学位** + 过去 5 年内有 3 年工作经验（24 个月）；C 类是本科毕业 5 年内但经验不足 3 年（24 个月，设年度配额、先到先得）。B / C 类**只看本科院校**：双非本科读了 QS100 的硕士、博士不算数。务必到入境处官网核对当年的合资格大学名单。',
     official: 'https://www.immd.gov.hk/eng/services/visas/TTPS.html',
     detail: {
       timeline: '材料齐全时通常 4 周左右出结果，C 类受配额影响可能更久',
       steps: [
-        '先到入境处官网核对**当年的合资格大学名单**，确认自己的学校在列——名单每年更新，且不等同于任何单一排名榜。',
+        '先到入境处官网核对**当年的合资格大学名单**，确认自己的**本科院校**在列（世界排名前 100）——只看本科，硕博院校在列不算；名单每年更新。',
         '判断自己走哪一类：A 类看申请前一年的收入；B 类需要过去 5 年内累计 3 年工作经验；C 类是毕业未满 5 年且经验不足 3 年，走年度配额、先到先得。',
         '办理学历认证。非香港学历需要经学信网或香港学术及职业资历评审局出具验证报告，这一步耗时最久，建议最先启动。',
         '在入境处网上服务平台提交申请，上传身份证明、学历证明、工作或收入证明。',
