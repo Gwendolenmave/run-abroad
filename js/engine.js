@@ -315,9 +315,11 @@ function scoreOf(profile, p, status, softGaps, skillMatch) {
   let score = { eligible: 70, close: 50, stretch: 30, blocked: 0 }[status];
   if (status === 'blocked') return 0;
 
-  // 每个软缺口按预估时间中位数折算扣分：约 3 分起步，每多 6 个月多扣 1 分，
-  // 限制在 2–8 分之间。常见缺口平均约 5–6 分，与原先的固定 6 分相当，
-  // 所以整体分数范围不变，只是「两个月能补」比「要读两年书」扣得少。
+  // 每个软缺口按预估时间中位数折算扣分：round(3 + 月数中位 / 6)，限制在 2–8 分。
+  // 例：gradWithin 3、english / jobOffer / income 约 4、funds / french 5、
+  // degree / studyIn 6、skills 7、workExp 缺 1 年 5（缺得多封顶 8）。
+  // 多数缺口比原先固定的 6 分扣得少，所以整体分数会略高一点；
+  // 分数只用于组内排序，不影响 status，只是「两个月能补」比「要读两年书」扣得更少。
   for (const g of softGaps) {
     const [lo, hi] = g.effort.months;
     score -= Math.max(2, Math.min(8, Math.round(3 + (lo + hi) / 2 / 6)));
@@ -377,8 +379,11 @@ function matchAll(profile) {
  *
  * 排序仍以「挡住的路径数」为主，只用预估时间做温和折算：
  *   权重 = 路径数 / (1 + 典型月数中位 / 48)
- * 时间最长（约 36 个月）的缺口权重打约 6 折，所以「解锁 20 条但要读两年书」
- * 不会压过「解锁 15 条但两个月就能补」，而路径数差距明显时仍由数量决定。
+ * 折算是温和的：约 36 个月的缺口权重约打 5.7 折（1/1.75），约 2 个月的几乎不打折。
+ * 例：degree 解锁 20 条、中位 18 个月 → 14.55，english 解锁 15 条、中位 7 个月 → 13.09，
+ * 仍是 20 条的在前；但若 15 条的只要 2 个月 → 14.40，与 20 条的几乎打平；
+ * 解锁 20 条但要约 36 个月 → 11.43，则会排到 15 条 / 2 个月的后面。
+ * 路径数差距明显时仍由数量决定。
  * 权重相同时路径数多的在前。months 取各路径上该缺口预估的平均值，仅用于展示。
  */
 function bottlenecks(bucket) {

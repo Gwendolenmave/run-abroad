@@ -82,6 +82,8 @@ effortOverrides: {
 },
 ```
 
+注意：`workExp` 是按缺的年数线性算的，请用 `monthsPerUnit` 覆盖；写 `months` 会被默认的 `monthsPerUnit` 盖掉而不生效。
+
 ## 提交前自检
 
 打开 `index.html`，按 F12 看控制台。`validatePathways()` 会在页面加载时自动跑，重复 `id`、缺字段、未定义的 `type` 都会打印告警。
