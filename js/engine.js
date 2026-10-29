@@ -315,7 +315,13 @@ function scoreOf(profile, p, status, softGaps, skillMatch) {
   let score = { eligible: 70, close: 50, stretch: 30, blocked: 0 }[status];
   if (status === 'blocked') return 0;
 
-  score -= softGaps.length * 6;
+  // 每个软缺口按预估时间中位数折算扣分：约 3 分起步，每多 6 个月多扣 1 分，
+  // 限制在 2–8 分之间。常见缺口平均约 5–6 分，与原先的固定 6 分相当，
+  // 所以整体分数范围不变，只是「两个月能补」比「要读两年书」扣得少。
+  for (const g of softGaps) {
+    const [lo, hi] = g.effort.months;
+    score -= Math.max(2, Math.min(8, Math.round(3 + (lo + hi) / 2 / 6)));
+  }
 
   // 职业方向对上了紧缺清单，是很强的正面信号，往前排
   if (skillMatch) score += 10;
