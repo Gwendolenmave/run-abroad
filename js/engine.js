@@ -368,12 +368,21 @@ function matchAll(profile) {
 /**
  * 统计哪个软缺口挡住了最多路径 —— 用来给出「优先补哪一项」的建议。
  * 这往往比列出一堆签证更有用。
+ *
+ * 排序仍以「挡住的路径数」为主，只用预估时间做温和折算：
+ *   权重 = 路径数 / (1 + 典型月数中位 / 48)
+ * 时间最长（约 36 个月）的缺口权重打约 6 折，所以「解锁 20 条但要读两年书」
+ * 不会压过「解锁 15 条但两个月就能补」，而路径数差距明显时仍由数量决定。
+ * 权重相同时路径数多的在前。months 取各路径上该缺口预估的平均值，仅用于展示。
  */
 function bottlenecks(bucket) {
-  const count = {};
+  const stat = {};
   for (const r of [...bucket.close, ...bucket.stretch]) {
     for (const g of r.softGaps) {
-      count[g.field] = (count[g.field] || 0) + 1;
+      const s = stat[g.field] || (stat[g.field] = { count: 0, lo: 0, hi: 0 });
+      s.count += 1;
+      s.lo += g.effort.months[0];
+      s.hi += g.effort.months[1];
     }
   }
   const advice = {
@@ -389,8 +398,15 @@ function bottlenecks(bucket) {
     french: '学法语到 NCLC 7（加拿大法语通道分数线远低于常规轮次）',
     otherLang: '学一门小语种（德语开职业教育，日语开日本本地路径）',
   };
-  return Object.entries(count)
-    .sort((a, b) => b[1] - a[1])
+  return Object.entries(stat)
+    .map(([field, s]) => {
+      const months = [Math.round(s.lo / s.count), Math.round(s.hi / s.count)];
+      return {
+        field, count: s.count, months, text: advice[field] || field,
+        weight: s.count / (1 + (months[0] + months[1]) / 2 / 48),
+      };
+    })
+    .sort((a, b) => b.weight - a.weight || b.count - a.count)
     .slice(0, 3)
-    .map(([field, n]) => ({ field, count: n, text: advice[field] || field }));
+    .map(({ weight, ...rest }) => rest);
 }
