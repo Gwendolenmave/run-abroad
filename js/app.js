@@ -434,6 +434,20 @@ function renderFilterNote() {
   note.textContent = `已隐藏 ${hidden.length} 条：${reasons.join(' · ')}`;
 }
 
+/* ── 预估准备成本的文案 ─────────────────── */
+
+const COST_LABEL = { none: '无', low: '低', mid: '中', high: '高' };
+
+function monthsText([lo, hi]) {
+  if (hi <= 1) return '1 个月内';
+  return lo === hi ? `${lo} 个月` : `${lo}–${hi} 个月`;
+}
+
+function effortLine(effort) {
+  return `预计准备 ${monthsText(effort.months)}，花费：${COST_LABEL[effort.cost]}` +
+    `${effort.uncertain ? '，其中有不确定项' : ''}（粗略估计）`;
+}
+
 function renderSummary(profile, bucket) {
   const necks = bottlenecks(bucket);
   const n = (k) => bucket[k].length;
@@ -451,7 +465,7 @@ function renderSummary(profile, bucket) {
     ${necks.length ? `
       <div class="bottleneck">
         <h3>先补哪一项最划算</h3>
-        <ol>${necks.map((b) => `<li>${b.text}<em>解锁 ${b.count} 条路径</em></li>`).join('')}</ol>
+        <ol>${necks.map((b) => `<li>${b.text}<em>解锁 ${b.count} 条路径 · 约 ${monthsText(b.months)}</em></li>`).join('')}</ol>
       </div>` : ''}
   `;
 }
@@ -570,6 +584,8 @@ function card(r, i = 0) {
         <div class="gaps">
           <b>你还差：</b>
           <ul>${gaps.map((g) => `<li class="${g.kind}">${fmt(g.text)}</li>`).join('')}</ul>
+          ${r.effort && ['close', 'stretch'].includes(r.status)
+            ? `<p class="effort">${effortLine(r.effort)}</p>` : ''}
         </div>` : '<div class="gaps none">✓ 所列门槛均已满足</div>'}
 
       <div class="card-links">

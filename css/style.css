@@ -712,6 +712,11 @@ button { font: inherit; cursor: pointer; transition: all .16s; }
 .gaps li.hard { color: var(--muted); }
 .gaps li.hard::before { content: '✕'; color: var(--far); }
 .gaps li.soft::before { content: '△'; color: var(--near); }
+.gaps .effort {
+  margin: var(--s2) 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
 .gaps li strong { font-weight: 600; color: var(--ink); }
 
 .gaps.none {

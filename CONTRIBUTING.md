@@ -67,6 +67,23 @@
 
 请用自己的话总结，不要大段复制官网或其他网站的原文。
 
+## 调整软缺口的预估时间 / 费用
+
+结果卡片上的「预计准备 X–Y 个月，花费：低/中/高」来自 `js/engine.js` 里的 `GAP_EFFORT`：每种软缺口一个月数区间（`months`，工作经验用 `monthsPerUnit` 按缺的年数线性算）、一个费用档位（`none / low / mid / high`）和可选的 `uncertain`。一条路径的预计时间取各缺口的最大值（假设可并行），费用取最高档。
+
+这些都是**粗略估计**，只用于排序和展示，不影响 `eligible / close / stretch / blocked` 的判定。如果觉得某个数字不合理，欢迎直接改常量，并在 PR 里写明依据。
+
+某条路径的情况特殊时，可以在 `data.js` 里给它加可选字段 `effortOverrides`，只写需要覆盖的缺口和字段，没写的沿用默认值：
+
+```js
+effortOverrides: {
+  english: { months: [1, 3] },     // 这条路径的语言要求很低
+  workExp: { monthsPerUnit: 6 },
+},
+```
+
+注意：`workExp` 是按缺的年数线性算的，请用 `monthsPerUnit` 覆盖；写 `months` 会被默认的 `monthsPerUnit` 盖掉而不生效。
+
 ## 提交前自检
 
 打开 `index.html`，按 F12 看控制台。`validatePathways()` 会在页面加载时自动跑，重复 `id`、缺字段、未定义的 `type` 都会打印告警。

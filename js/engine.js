@@ -11,6 +11,68 @@ const HARD = 'hard';
 /** 软性缺口：花时间或花钱可以补（语言、工作经验、资金、offer） */
 const SOFT = 'soft';
 
+/**
+ * 软缺口的粗略准备成本，只用于排序和展示，**不参与** eligible / close / stretch / blocked 的判定。
+ *
+ * - months：补上这个缺口大约需要的月数区间 [最少, 最多]（含备考 / 申请 / 等待）。
+ * - monthsPerUnit：按「缺口大小」线性估算（目前只有 workExp：每缺 1 年约 12 个月）。
+ * - cost：费用档位 none / low / mid / high，只是相对高低，不是金额。
+ * - uncertain：时间取决于外部因素（如能否拿到雇主 offer），展示时会标注「不确定」。
+ *
+ * 这些数字是常见情形下的粗略估计，不是权威数据，也不承诺成功率。
+ * 欢迎直接改常量并在 PR 里说明依据；单条路径有特殊情况时，
+ * 可在 data.js 的该路径上写可选字段 effortOverrides，只覆盖需要改的字段，例如：
+ *   effortOverrides: { english: { months: [1, 3] }, workExp: { monthsPerUnit: 6 } }
+ */
+const GAP_EFFORT = {
+  english:    { months: [2, 12],  cost: 'low'  },   // 雅思 / 同等考试的备考 + 考试周期
+  french:     { months: [6, 18],  cost: 'mid'  },   // 从入门到 NCLC 7 左右
+  otherLang:  { months: [6, 24],  cost: 'mid'  },   // 达到 B1–B2 的常见学习周期
+  workExp:    { monthsPerUnit: 12, cost: 'none' },  // 每缺 1 年约 12 个月，按缺的年数线性算
+  funds:      { months: [3, 24],  cost: 'mid'  },   // 视缺口大小，积累或筹措资金
+  income:     { months: [3, 12],  cost: 'none' },   // 建立 / 调整持续收入来源
+  jobOffer:   { months: [3, 12],  cost: 'none', uncertain: true }, // 求职周期，高度依赖市场
+  skills:     { months: [12, 36], cost: 'mid'  },   // 转向或培训新的职业方向
+  degree:     { months: [12, 24], cost: 'high' },   // 读一个硕士等
+  studyIn:    { months: [12, 24], cost: 'high' },   // 在目标地读一个学位
+  gradWithin: { months: [0, 1],   cost: 'none', uncertain: true }, // 只是毕业时间未填，尽快核实即可
+};
+
+const COST_RANK = { none: 0, low: 1, mid: 2, high: 3 };
+
+/** 某个软缺口在某条路径上的预估：默认值 + 该路径的 effortOverrides（可选）。 */
+function effortOf(gap, profile, p) {
+  const base = { ...(GAP_EFFORT[gap.field] || { months: [0, 0], cost: 'none', uncertain: true }) };
+  Object.assign(base, p.effortOverrides?.[gap.field]);
+  let months = base.months;
+  if (base.monthsPerUnit != null) {
+    // 目前只有工作年限按缺口大小线性估算
+    const missing = gap.field === 'workExp'
+      ? Math.max(0, (p.req.workExp || 0) - (profile.workExp || 0))
+      : 1;
+    const m = Math.round(base.monthsPerUnit * missing);
+    months = [m, m];
+  }
+  return { months: [...months], cost: base.cost, uncertain: !!base.uncertain };
+}
+
+/**
+ * 一条路径的准备成本汇总：缺口可以并行准备，所以时间取各缺口的最大值，费用取最高档位。
+ * 没有软缺口时返回 null。
+ */
+function summarizeEffort(softGaps) {
+  if (!softGaps.length) return null;
+  const efforts = softGaps.map((g) => g.effort);
+  return {
+    months: [
+      Math.max(...efforts.map((e) => e.months[0])),
+      Math.max(...efforts.map((e) => e.months[1])),
+    ],
+    cost: efforts.reduce((top, e) => (COST_RANK[e.cost] > COST_RANK[top] ? e.cost : top), 'none'),
+    uncertain: efforts.some((e) => e.uncertain),
+  };
+}
+
 const MATCH_ACTIVE_INCOME_TYPES = new Set(['employee', 'selfEmployed', 'mixed']);
 
 function compareIncomeBand(value, threshold) {
@@ -219,6 +281,7 @@ function checkPathway(profile, p) {
 
   const hardGaps = gaps.filter((g) => g.kind === HARD);
   const softGaps = gaps.filter((g) => g.kind === SOFT);
+  for (const g of softGaps) g.effort = effortOf(g, profile, p);
 
   let status;
   if (gaps.length === 0) status = 'eligible';
@@ -228,6 +291,7 @@ function checkPathway(profile, p) {
 
   return {
     pathway: p, status, hardGaps, softGaps, skillMatch,
+    effort: summarizeEffort(softGaps),
     score: scoreOf(profile, p, status, softGaps, skillMatch),
   };
 }
@@ -251,7 +315,15 @@ function scoreOf(profile, p, status, softGaps, skillMatch) {
   let score = { eligible: 70, close: 50, stretch: 30, blocked: 0 }[status];
   if (status === 'blocked') return 0;
 
-  score -= softGaps.length * 6;
+  // 每个软缺口按预估时间中位数折算扣分：round(3 + 月数中位 / 6)，限制在 2–8 分。
+  // 例：gradWithin 3、english / jobOffer / income 约 4、funds / french 5、
+  // degree / studyIn 6、skills 7、workExp 缺 1 年 5（缺得多封顶 8）。
+  // 多数缺口比原先固定的 6 分扣得少，所以整体分数会略高一点；
+  // 分数只用于组内排序，不影响 status，只是「两个月能补」比「要读两年书」扣得更少。
+  for (const g of softGaps) {
+    const [lo, hi] = g.effort.months;
+    score -= Math.max(2, Math.min(8, Math.round(3 + (lo + hi) / 2 / 6)));
+  }
 
   // 职业方向对上了紧缺清单，是很强的正面信号，往前排
   if (skillMatch) score += 10;
@@ -304,12 +376,24 @@ function matchAll(profile) {
 /**
  * 统计哪个软缺口挡住了最多路径 —— 用来给出「优先补哪一项」的建议。
  * 这往往比列出一堆签证更有用。
+ *
+ * 排序仍以「挡住的路径数」为主，只用预估时间做温和折算：
+ *   权重 = 路径数 / (1 + 典型月数中位 / 48)
+ * 折算是温和的：约 36 个月的缺口权重约打 5.7 折（1/1.75），约 2 个月的几乎不打折。
+ * 例：degree 解锁 20 条、中位 18 个月 → 14.55，english 解锁 15 条、中位 7 个月 → 13.09，
+ * 仍是 20 条的在前；但若 15 条的只要 2 个月 → 14.40，与 20 条的几乎打平；
+ * 解锁 20 条但要约 36 个月 → 11.43，则会排到 15 条 / 2 个月的后面。
+ * 路径数差距明显时仍由数量决定。
+ * 权重相同时路径数多的在前。months 取各路径上该缺口预估的平均值，仅用于展示。
  */
 function bottlenecks(bucket) {
-  const count = {};
+  const stat = {};
   for (const r of [...bucket.close, ...bucket.stretch]) {
     for (const g of r.softGaps) {
-      count[g.field] = (count[g.field] || 0) + 1;
+      const s = stat[g.field] || (stat[g.field] = { count: 0, lo: 0, hi: 0 });
+      s.count += 1;
+      s.lo += g.effort.months[0];
+      s.hi += g.effort.months[1];
     }
   }
   const advice = {
@@ -325,8 +409,15 @@ function bottlenecks(bucket) {
     french: '学法语到 NCLC 7（加拿大法语通道分数线远低于常规轮次）',
     otherLang: '学一门小语种（德语开职业教育，日语开日本本地路径）',
   };
-  return Object.entries(count)
-    .sort((a, b) => b[1] - a[1])
+  return Object.entries(stat)
+    .map(([field, s]) => {
+      const months = [Math.round(s.lo / s.count), Math.round(s.hi / s.count)];
+      return {
+        field, count: s.count, months, text: advice[field] || field,
+        weight: s.count / (1 + (months[0] + months[1]) / 2 / 48),
+      };
+    })
+    .sort((a, b) => b.weight - a.weight || b.count - a.count)
     .slice(0, 3)
-    .map(([field, n]) => ({ field, count: n, text: advice[field] || field }));
+    .map(({ weight, ...rest }) => rest);
 }
