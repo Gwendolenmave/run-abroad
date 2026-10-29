@@ -209,6 +209,7 @@ const TYPE_LABEL = {
  *   income: { mode: remote|passive|either, minMonthlyUSD, foreignSource, shortfallHint? }
  *   studyIn: STUDY_LOC 的 key，表示学位必须在该地取得
  *   studyInAny: STUDY_LOC key 数组，表示在其中任一地区院校就读 / 毕业即可
+ *   allowCurrentStudent: true 时，在读生可满足 minDeg（结合 yearsSinceGrad: null）
  */
 const PATHWAYS = [
   // ─────────────── 打工度假 / 快速出去 ───────────────
@@ -250,6 +251,7 @@ const PATHWAYS = [
     req: {
       age: [18, 25],
       minDeg: DEG.bachelor,
+      allowCurrentStudent: true,
       studyInAny: ['au', 'fr', 'de', 'hk', 'jp', 'nl', 'nz', 'ch', 'uk', 'us'],
     },
     quota: '2000 个在效名额',

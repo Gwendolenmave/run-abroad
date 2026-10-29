@@ -171,8 +171,10 @@ function checkPathway(profile, p) {
     }
   }
 
-  // 学历
-  if (req.minDeg != null && profile.degree < req.minDeg) {
+  // 学历；部分路径也接受当前在读生（yearsSinceGrad 为 null）
+  const currentStudent = profile.yearsSinceGrad == null;
+  if (req.minDeg != null && profile.degree < req.minDeg &&
+      !(req.allowCurrentStudent && currentStudent)) {
     gaps.push({
       kind: SOFT, field: 'degree',
       text: `需要${DEG_LABEL[req.minDeg]}及以上学历，你目前是${DEG_LABEL[profile.degree]}`,
