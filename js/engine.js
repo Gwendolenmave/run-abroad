@@ -253,8 +253,14 @@ function checkPathway(profile, p) {
     if (gap) gaps.push(gap);
   }
 
-  // 学位就读地：部分路径只认在当地取得的学位
-  if (req.studyIn && profile.studyLoc !== req.studyIn) {
+  // 学位就读地：部分路径只认一个或一组指定地区的院校
+  if (req.studyInAny?.length && !req.studyInAny.includes(profile.studyLoc)) {
+    const locations = req.studyInAny.map((loc) => STUDY_LOC[loc]).join(' / ');
+    gaps.push({
+      kind: SOFT, field: 'studyIn',
+      text: `需在以下地区之一的院校就读或毕业：${locations}`,
+    });
+  } else if (req.studyIn && profile.studyLoc !== req.studyIn) {
     gaps.push({
       kind: SOFT, field: 'studyIn',
       text: `学位需在${STUDY_LOC[req.studyIn]}的院校取得（可先去读书再申请）`,

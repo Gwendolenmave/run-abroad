@@ -31,6 +31,9 @@ function requirements(p) {
   if (r.uniRank != null) rows.push(['院校', `世界排名前 ${r.uniRank}`]);
   if (r.ugRank != null) rows.push(['本科院校', `世界排名前 ${r.ugRank}（QS${r.ugRank}），只看本科，硕博院校不算`]);
   if (r.studyIn) rows.push(['学位取得地', `必须在${STUDY_LOC[r.studyIn]}的院校取得`]);
+  if (r.studyInAny?.length) {
+    rows.push(['院校所在地', `需在以下地区之一的院校就读或毕业：${r.studyInAny.map((loc) => STUDY_LOC[loc]).join(' / ')}`]);
+  }
   if (r.gradWithin != null) rows.push(['毕业年限', `毕业 ${r.gradWithin} 年内`]);
   if (r.minEng != null) rows.push(['英语', ENG_LABEL[r.minEng]]);
   if (r.minFrench != null) rows.push(['法语', FRA_LABEL[r.minFrench]]);
