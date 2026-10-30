@@ -171,8 +171,9 @@ function checkPathway(profile, p) {
     }
   }
 
-  // 学历；部分路径也接受当前在读生（yearsSinceGrad 为 null）
-  const currentStudent = profile.yearsSinceGrad == null;
+  // 学历；部分路径也接受当前在读生（yearsSinceGrad 为 null）。
+  // 「还在读 / 尚未毕业」也可能是没读过大学的人，至少要有高中学历才算可能在读本科。
+  const currentStudent = profile.yearsSinceGrad == null && profile.degree >= DEG.highschool;
   if (req.minDeg != null && profile.degree < req.minDeg &&
       !(req.allowCurrentStudent && currentStudent)) {
     gaps.push({

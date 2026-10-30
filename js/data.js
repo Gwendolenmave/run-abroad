@@ -1391,6 +1391,9 @@ function validatePathways() {
       if (!p[f]) problems.push(`${p.id} 缺少字段 ${f}`);
     }
     if (!TYPE_LABEL[p.type]) problems.push(`${p.id} 的 type "${p.type}" 未定义`);
+    if (p.req?.studyInAny && p.req?.studyIn) {
+      problems.push(`${p.id} 同时写了 studyIn 和 studyInAny，studyIn 会被忽略，请只保留一个`);
+    }
     if (p.req?.studyInAny) {
       if (!Array.isArray(p.req.studyInAny) || !p.req.studyInAny.length) {
         problems.push(`${p.id} 的 studyInAny 必须是非空地区数组`);
